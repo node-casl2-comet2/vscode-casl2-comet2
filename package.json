@@ -1,0 +1,67 @@
+{
+  "name": "vscode-casl2-comet2",
+  "displayName": "CASL2/COMET2",
+  "description": "CASL2/COMET2 support for Visual Studio Code.",
+  "version": "0.0.1",
+  "publisher": "MaxfieldWalker",
+  "galleryBanner": {
+    "color": "#000",
+    "theme": "dark"
+  },
+  "icon": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/node-casl2-comet2/vscode-casl2-comet2"
+  },
+  "bugs": {
+    "url": "https://github.com/node-casl2-comet2/vscode-casl2-comet2/issues"
+  },
+  "homepage": "",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.10.0"
+  },
+  "categories": [
+    "Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:casl2"
+  ],
+  "main": "./dist/src/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "casl2",
+        "aliases": [
+          "CASL2",
+          "casl"
+        ],
+        "extensions": [
+          ".cas"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "casl2",
+        "scopeName": "source.cas",
+        "path": "./syntaxes/casl2.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -p .",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "node ./node_modules/vscode/bin/test"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.39",
+    "@types/node": "^7.0.7",
+    "vscode": "^1.0.5"
+  }
+}

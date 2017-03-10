@@ -1,0 +1,6 @@
+ADD     START
+        LAD     GR1, 2
+        LAD     GR2, 3
+        ADDA    GR1, GR2 ; GR1 <- GR1 + GR2
+        RET
+        END

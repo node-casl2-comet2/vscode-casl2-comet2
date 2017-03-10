@@ -1,0 +1,217 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "CASL2",
+	"patterns": [
+		{
+			"include": "#comment_line"
+		},
+		{
+			"include": "#inst_with_operand"
+		},
+		{
+			"include": "#inst_without_operand"
+		}
+	],
+	"repository": {
+		"inst_with_operand": {
+			"name": "comment.line.character.casl2",
+			"patterns": [
+				{
+					"match": "(\\S+)?\\s+(\\S+)\\s+([^;]*[^;\\s])(\\s+(;.*)?)?",
+					"captures": {
+						"1": {"patterns": [{"include": "#label"}]},
+						"2": {"patterns": [{"include": "#instruction_code"}]},
+						"3": {"patterns": [{"include": "#operands"}]},
+						"5": {
+							"name": "comment.line.character.casl2"
+						}
+						
+					}
+				}
+			]
+		},
+		"inst_without_operand": {
+			"name": "comment.line.character.casl2",
+			"patterns": [
+				{
+					"match": "(\\S+)?\\s+(\\S+)(.*)",
+					"captures": {
+						"1": {"patterns": [{"include": "#label"}]},
+						"2": {"patterns": [{"include": "#instruction_code"}]},
+						"3": {"patterns": [{"include": "#comment_end_of_line"}]}
+					}
+				}
+			]
+		},
+		"comment_line": {
+			"name": "comment.line.character.casl2",
+			"patterns": [
+				{
+					"include": "#comment"
+				}
+			]
+		},
+		"comment_end_of_line": {
+			"patterns": [
+				{
+					"match": "\\s+(.*)",
+					"captures": {
+						"1": {"patterns": [{"include": "#comment"}]}
+					},
+					"comment": "命令行にある末尾のコメント"
+				}
+			]
+		},
+		"comment": {
+			"name": "comment.line.character.casl2",
+			"begin": "\\s*;",
+			"patterns": [
+				{"match": ".*"}
+			],
+			"end":"\\n"
+		},
+		"label": {
+			"patterns": [
+				{"name": "markup.italic.casl2",
+				"match": "[A-Z][A-Z0-9]*"}
+			]
+		},
+		"instruction_code": {
+			"patterns": [
+				{"include": "#assembler_instruction"},
+				{"include": "#macro_instruction"},
+				{"include": "#machine_instruction"}
+			]
+		},
+		"assembler_instruction": {
+			"patterns": [
+				{
+					"comment": "アセンブラ命令",
+					"name": "support.function.casl2",
+					"match": "(START|END|DS|DC)"
+				}
+			]
+		},
+		"macro_instruction": {
+			"patterns": [
+				{
+					"comment": "マクロ命令",
+					"name": "support.function.casl2",
+					"match": "(IN|OUT|RPUSH|RPOP)"
+				}
+			]
+		},
+		"machine_instruction": {
+			"patterns": [
+				{
+					"comment": "機械語命令",
+					"name": "support.function.casl2",
+					"match": "(LD|ST|LAD|ADDA|ADDL|SUBA|SUBL|AND|OR|XOR|CPA|CPL|SLA|SRA|SLL|SRL|JPL|JMI|JNZ|JZE|JOV|JUMP|PUSH|POP|CALL|RET|SVC|NOP)"
+				}
+			]
+		},
+		"operands": {
+			"patterns": [
+				{
+					"match": "([^,]+)(, (.+))?",
+					"captures": {
+						"1": {
+							"patterns": [
+								{"include": "#operand"}
+							]
+						},
+						"3": {
+							"patterns": [
+								{"include": "#operands"}
+							]					
+						}
+					}
+				}
+			]
+		},
+		"operand": {
+			"patterns": [
+				{"include": "#index_register"},
+				{"include": "#general_register"},
+				{"include": "#constant"}
+			]
+		},
+		"general_register": {
+			"patterns": [
+				{
+					"name": "support.variable.casl2",
+					"match": "GR[0-7]",
+					"comment": "汎用レジスタ"
+				}
+			]
+		},
+		"index_register": {
+			"patterns": [
+				{
+					"name": "support.variable.casl2",
+					"match": "GR[1-7]",
+					"comment": "指標レジスタ"
+				}
+			]
+		},
+		"address": {
+			"patterns": [
+				{"include": "#constant_decimal"},
+				{"include": "#constant_hex"},
+				{"include": "#constant_address"},
+				{
+					"match": "=(\\S)",
+					"captures": {"1": {"patterns": [{"include": "#constant"}]}}
+				}
+			]
+		},
+		"constant": {
+			"patterns": [
+				{"include": "#constant_decimal"},
+				{"include": "#constant_hex"},
+				{"include": "#constant_string"},
+				{"include": "#constant_address"}		
+			]
+		},
+		"constant_decimal": {
+			"patterns": [
+				{
+					"comment": "10進定数",
+					"name": "constant.numeric.casl2",
+					"match": "-?[0-9]+"
+				}
+			]
+		},
+		"constant_hex": {
+			"patterns": [
+				{
+					"name": "constant.numeric.casl2",
+					"comment": "16進定数",
+					"match": "#[0-9A-F]+"
+				}
+			]
+		},
+		"constant_string": {
+			"patterns": [
+				{
+					"comment": "文字定数",
+					"name": "string.quoted.single",
+					"begin": "'",
+					"end": "'",
+					"patterns": [
+						{"match": "."}
+					]
+				}
+			]
+		},
+		"constant_address": {
+			"patterns": [
+				{
+					"comment": "アドレス定数",
+					"include": "#label"
+				}
+			]
+		}
+	},
+	"scopeName": "source.cas"
+}

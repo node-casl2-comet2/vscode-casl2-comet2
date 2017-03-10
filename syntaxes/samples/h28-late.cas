@@ -1,0 +1,22 @@
+LPROC   START
+        RPUSH
+        LD    GR4, GR2          ; GR4 ← n
+LP      LD    GR2, 0, GR1       ; 次の要素をたどる
+        JZE   FIN               ; n ＞ N か?
+        SUBA  GR4, =1
+        JZE   NEXT              ; 要素 n に達したか?
+        JUMP  LP
+NEXT    LD    GR3, LTBL, GR3
+        JUMP  0, GR3            ; 指定された処理にジャンプ
+LINS    LD    GR4, GR2
+        CALL  EGET              ; GR2 ← 挿入される要素の先頭アドレス
+        ST    GR4, 0, GR2       ; 挿入される要素の１語目を設定
+        ST    GR0, 1, GR2
+        JUMP  FIN
+        ST    GR4, 0, GR2       ; 要素 n－1 の１語目を再設定
+        CALL  EFREE             ; 削除された要素 n の領域を解放
+FIN     RPOP
+        RET
+LTBL    DC    LINS              ; 処理の分岐先アドレステーブル
+        DC    LDEL
+        END
