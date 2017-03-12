@@ -2,8 +2,9 @@
 
 import * as path from "path";
 
-import { workspace, Disposable, ExtensionContext } from "vscode";
+import { workspace, Disposable, ExtensionContext, languages } from "vscode";
 import { LanguageClient, LanguageClientOptions, SettingMonitor, ServerOptions, TransportKind } from "vscode-languageclient";
+import Casl2SignatureHelpProvider from "./signatureHelpProvider";
 
 export function activate(context: ExtensionContext) {
 
@@ -31,4 +32,7 @@ export function activate(context: ExtensionContext) {
     const disposable = languageClient.start();
 
     context.subscriptions.push(disposable);
+    context.subscriptions.push(
+        languages.registerSignatureHelpProvider(
+            [{ language: "casl2" }], new Casl2SignatureHelpProvider(languageClient), ","));
 }
