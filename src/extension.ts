@@ -4,7 +4,6 @@ import * as path from "path";
 
 import { workspace, Disposable, ExtensionContext, languages } from "vscode";
 import { LanguageClient, LanguageClientOptions, SettingMonitor, ServerOptions, TransportKind } from "vscode-languageclient";
-import Casl2SignatureHelpProvider from "./signatureHelpProvider";
 
 export function activate(context: ExtensionContext) {
 
@@ -22,7 +21,12 @@ export function activate(context: ExtensionContext) {
     }
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ language: "casl2" }]
+        documentSelector: [{ language: "casl2" }],
+        synchronize: {
+            // vscodeのsettingsのcasl2の項目をLanguage Serverと同期する
+            configurationSection: "casl2",
+            fileEvents: workspace.createFileSystemWatcher("**/.clientrc")
+        }
     }
 
     // クライアントを作成して開始する
@@ -32,7 +36,4 @@ export function activate(context: ExtensionContext) {
     const disposable = languageClient.start();
 
     context.subscriptions.push(disposable);
-    context.subscriptions.push(
-        languages.registerSignatureHelpProvider(
-            [{ language: "casl2" }], new Casl2SignatureHelpProvider(languageClient), ","));
 }
