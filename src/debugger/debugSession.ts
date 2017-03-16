@@ -11,6 +11,7 @@ import { basename } from "path";
 import { LaunchRequestArguments } from "./launchRequestArguments";
 import Comet2Debugger from "./comet2/comet2Debugger";
 import { printDiagnostic } from "./ui/print";
+import { createVariable, boolToBin } from "./variables";
 
 
 export default class Comet2DebugSession extends DebugSession {
@@ -26,7 +27,6 @@ export default class Comet2DebugSession extends DebugSession {
     }
     private set _currentLine(line: number) {
         this.__currentLine = line;
-        this.log("line", line);
     }
 
     // デバッグするファイル名
@@ -178,8 +178,6 @@ export default class Comet2DebugSession extends DebugSession {
         const frameReference = args.frameId;
         const scopes = new Array<Scope>();
         scopes.push(new Scope("Local", this._variableHandles.create("local_" + frameReference), false));
-        scopes.push(new Scope("Closure", this._variableHandles.create("closure_" + frameReference), false));
-        scopes.push(new Scope("Global", this._variableHandles.create("global_" + frameReference), true));
 
         response.body = {
             scopes: scopes
@@ -188,53 +186,21 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
-        // TODO: GR, SP, PR, FR(OF, SF, ZF)の値を表示する
-
         const variables: Array<DebugProtocol.Variable> = [];
-        const id = this._variableHandles.get(args.variablesReference);
-
         const state = this._debugger.getState();
-        const grs = state.GR;
 
-        variables.push({
-            name: "GR0",
-            type: "integer",
-            value: grs.GR0.toString(),
-            variablesReference: 0
-        });
+        // GR8が有効だとしてもGR8はSPに一致するので必要ない
+        const gr = [0, 1, 2, 3, 4, 5, 6, 7].map(i => "GR" + i).map(gr => createVariable(gr, state.GR[gr]));
+        variables.push(...gr);
 
-        variables.push({
-            name: "GR1",
-            type: "integer",
-            value: grs.GR1.toString(),
-            variablesReference: 0
-        });
+        const pr = createVariable("PR", state.PR);
+        const sp = createVariable("SP", state.SP);
+        const of = createVariable("OF", boolToBin(state.FR.OF));
+        const sf = createVariable("SF", boolToBin(state.FR.SF));
+        const zf = createVariable("ZF", boolToBin(state.FR.ZF));
+        variables.push(pr, sp, of, sf, zf);
 
-        variables.push({
-            name: "GR2",
-            type: "integer",
-            value: grs.GR2.toString(),
-            variablesReference: 0
-        });
-
-        variables.push({
-            name: "GR3",
-            type: "integer",
-            value: grs.GR3.toString(),
-            variablesReference: 0
-        });
-
-        variables.push({
-            name: "PR",
-            type: "integer",
-            value: state.PR.toString(),
-            variablesReference: 0
-        });
-
-        response.body = {
-            variables: variables
-        };
-
+        response.body = { variables: variables };
         this.sendResponse(response);
     }
 
@@ -325,19 +291,10 @@ export default class Comet2DebugSession extends DebugSession {
             this._currentLine = ln;
             this.sendResponse(response);
             this.sendEvent(new StoppedEvent("exception", Comet2DebugSession.THREAD_ID));
-            this.log("exception in line", ln);
             return true;
         }
 
         return false;
-    }
-
-    private log(msg: string, line: number) {
-        const e = new OutputEvent(`${msg}: ${line}\n`);
-        (<DebugProtocol.OutputEvent>e).body.variablesReference = this._variableHandles.create("args");
-
-        // デバッグコンソールに現在の行を表示する
-        this.sendEvent(e);
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
