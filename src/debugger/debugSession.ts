@@ -97,12 +97,8 @@ export default class Comet2DebugSession extends DebugSession {
                 // 一行目で停止する
                 this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
             } else {
-                this.sendResponse(response);
-                // プログラムを実行する
-                this._debugger.run();
-                this.sendEvent(new TerminatedEvent());
                 // ブレークポイントや例外に当たるまで進める
-                // this.continueRequest(<DebugProtocol.ContinueResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
+                this.continueRequest(<DebugProtocol.ContinueResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
             }
         } else {
             // Outputイベントのcategoryを'stderr'にすると
@@ -118,42 +114,36 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     // 設定されたブレークポイント(複数)の情報を受け取る
+    // デバッグモードに入る時とデバッグモード中に
+    // ブレークポイントを追加または削除した時に呼び出される
     protected setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments): void {
         const path = args.source.path!;
-        // ブレークポイントが付けられている行数を取得する
-        // TODO: args.linesはdeprecatedなので修正
-        const clientLines = args.lines!;
 
-        // read file contents into array for direct access
-        const lines = readFileSync(path).toString().split("");
+        if (args.breakpoints) {
+            // ブレークポイントが付けられている行数を取得する
+            const breakPointLines = args.breakpoints.map(x => x.line);
+            const lines = readFileSync(path).toString().split("");
 
-        const breakpoints = new Array<Breakpoint>();
+            const breakpoints = new Array<Breakpoint>();
 
-        // verify breakpoint locations
-        for (let i = 0; i < clientLines.length; i++) {
-            // debuggerにおける行数を変換する
-            const l = this.convertClientLineToDebugger(clientLines[i]);
-            const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(true, this.convertDebuggerLineToClient(l));
-            // ブレークポイントIDを設定する
-            breakpoint.id = this._breakpointId++;
-            breakpoints.push(breakpoint);
+            for (const bpLine of breakPointLines) {
+                const verify = true;
+                const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(verify, bpLine);
+                // ブレークポイントIDを設定する
+                breakpoint.id = this._breakpointId++;
+                breakpoints.push(breakpoint);
+            }
+
+            // ファイル名とともにブレークポイントを保持しておく
+            this._breakPoints.set(path, breakpoints);
+
+            response.body = {
+                breakpoints: breakpoints
+            };
+        } else {
+            this._breakPoints.set(path, []);
         }
 
-        // ファイル名とともにブレークポイントを保持しておく
-        this._breakPoints.set(path, breakpoints);
-
-        response.body = {
-            breakpoints: breakpoints
-        };
-        this.sendResponse(response);
-    }
-
-    protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = {
-            threads: [
-                new Thread(Comet2DebugSession.THREAD_ID, "thread 1")
-            ]
-        };
         this.sendResponse(response);
     }
 
@@ -202,29 +192,43 @@ export default class Comet2DebugSession extends DebugSession {
 
         const variables: Array<DebugProtocol.Variable> = [];
         const id = this._variableHandles.get(args.variablesReference);
+
+        const state = this._debugger.getState();
+        const grs = state.GR;
+
         variables.push({
-            name: id + "_i",
+            name: "GR0",
             type: "integer",
-            value: "123",
+            value: grs.GR0.toString(),
             variablesReference: 0
         });
+
         variables.push({
-            name: id + "_f",
-            type: "float",
-            value: "3.14",
+            name: "GR1",
+            type: "integer",
+            value: grs.GR1.toString(),
             variablesReference: 0
         });
+
         variables.push({
-            name: id + "_s",
-            type: "string",
-            value: "hello world",
+            name: "GR2",
+            type: "integer",
+            value: grs.GR2.toString(),
             variablesReference: 0
         });
+
         variables.push({
-            name: id + "_o",
-            type: "object",
-            value: "Object",
-            variablesReference: this._variableHandles.create("object_")
+            name: "GR3",
+            type: "integer",
+            value: grs.GR3.toString(),
+            variablesReference: 0
+        });
+
+        variables.push({
+            name: "PR",
+            type: "integer",
+            value: state.PR.toString(),
+            variablesReference: 0
         });
 
         response.body = {
@@ -236,9 +240,16 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-        for (let ln = this._currentLine + 1; ln < this._sourceLines.length; ln++) {
+        for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
+            const programEnd = this._debugger.step(nextLine - 1);
+            if (programEnd) {
+                this.sendResponse(response);
+                this.sendEvent(new TerminatedEvent());
+                return;
+            }
+
             // ブレークポイントなどで止まる必要があればまた止まる
-            if (this.fireEventsForLine(response, ln)) {
+            if (this.fireEventsForLine(response, nextLine)) {
                 return;
             }
         }
@@ -248,46 +259,35 @@ export default class Comet2DebugSession extends DebugSession {
         this.sendEvent(new TerminatedEvent());
     }
 
-    // TODO: COMET2のステップバックが実装されたら実装する
-    // 緑の逆再生ボタンが押された時
-    // protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments): void {
-    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
-    //         if (this.fireEventsForLine(response, ln)) {
-    //             return;
-    //         }
-    //     }
-
-    //     // 最初の行に戻ったら止める
-    //     this.sendResponse(response);
-    //     this._currentLine = 0;
-    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
-    // }
-    //
-    // TODO: COMET2のステップバックが実装されたら実装する
-    //
-    // protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments): void {
-    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
-    //         if (this.fireStepEvent(response, ln)) {
-    //             return;
-    //         }
-    //     }
-
-    //     // 最初の行に戻ったら止める
-    //     this.sendResponse(response);
-    //     this._currentLine = 0;
-    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
-    // }
-
+    // vscodeのStep Overに相当
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
-        for (let ln = this._currentLine + 1; ln < this._sourceLines.length; ln++) {
-            if (this.fireStepEvent(response, ln)) {
-                return;
-            }
+        console.log("Step Over");
+        this.sendResponse(response);
+    }
+
+    // vscodeのStep Intoに相当
+    protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
+        // 一行実行して停止
+        const nextLine = this._currentLine + 1;
+        const programEnd = this._debugger.step(nextLine - 1);
+
+        if (programEnd) {
+            this.sendResponse(response);
+            this.sendEvent(new TerminatedEvent());
+            return;
         }
 
-        // 最後の行ならデバッグを終了する
         this.sendResponse(response);
-        this.sendEvent(new TerminatedEvent());
+        // this._currentLineを設定することでストップする位置を知らせる
+        this._currentLine = nextLine;
+        // 停止
+        this.sendEvent(new StoppedEvent("step", Comet2DebugSession.THREAD_ID));
+    }
+
+    // vscodeのStep Outに相当
+    protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+        console.log("Step Out");
+        this.sendResponse(response);
     }
 
     protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
@@ -297,20 +297,6 @@ export default class Comet2DebugSession extends DebugSession {
         };
 
         this.sendResponse(response);
-    }
-
-	/**
-	 * 空行でなければブレークする
-	 */
-    private fireStepEvent(response: DebugProtocol.Response, ln: number): boolean {
-        if (this._sourceLines[ln].trim().length > 0) {
-            this._currentLine = ln;
-            this.sendResponse(response);
-            this.sendEvent(new StoppedEvent("step", Comet2DebugSession.THREAD_ID));
-            return true;
-        }
-
-        return false;
     }
 
 	/**
@@ -353,4 +339,43 @@ export default class Comet2DebugSession extends DebugSession {
         // デバッグコンソールに現在の行を表示する
         this.sendEvent(e);
     }
+
+    protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+        response.body = {
+            threads: [
+                new Thread(Comet2DebugSession.THREAD_ID, "thread 1")
+            ]
+        };
+        this.sendResponse(response);
+    }
+
+    // TODO: COMET2のステップバックが実装されたら実装する
+    // 緑の逆再生ボタンが押された時
+    // protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments): void {
+    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
+    //         if (this.fireEventsForLine(response, ln)) {
+    //             return;
+    //         }
+    //     }
+
+    //     // 最初の行に戻ったら止める
+    //     this.sendResponse(response);
+    //     this._currentLine = 0;
+    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
+    // }
+    //
+    // TODO: COMET2のステップバックが実装されたら実装する
+    //
+    // protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments): void {
+    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
+    //         if (this.fireStepEvent(response, ln)) {
+    //             return;
+    //         }
+    //     }
+
+    //     // 最初の行に戻ったら止める
+    //     this.sendResponse(response);
+    //     this._currentLine = 0;
+    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
+    // }
 }

@@ -10,6 +10,7 @@ export default class Comet2Debugger {
     private _compileResult: CompileResult;
     private _stdout: Output;
     private _stdin: Input;
+    private _subroutineLines: Array<number>;
 
     set onstdout(stdout: Output) {
         this._stdout = stdout;
@@ -37,10 +38,13 @@ export default class Comet2Debugger {
     launch(sourcePath: string): Array<Diagnostic> {
         this._sourcePath = sourcePath;
 
-        const compileResult = this._casl2.compile(sourcePath);
+        const compileResult = this._casl2.compile(sourcePath, true);
         this._compileResult = compileResult;
+        this._subroutineLines = Array.from(compileResult.debuggingInfo!.subroutineMap.values());
 
-        return compileResult.errors;
+        this._comet2.init(compileResult.hexes!);
+
+        return compileResult.diagnostics;
     }
 
     run(): void {
@@ -57,5 +61,19 @@ export default class Comet2Debugger {
                 break;
             }
         }
+    }
+
+    step(line: number): boolean {
+        if (this._subroutineLines.indexOf(line) !== -1) {
+            // START命令は実際には何もしない
+            return false;
+        }
+
+        const end = this._comet2.run();
+        return end;
+    }
+
+    getState() {
+        return this._comet2.getState();
     }
 }
