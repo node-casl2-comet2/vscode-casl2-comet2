@@ -3,9 +3,9 @@
     "version": "0.1.0",
     "configurations": [
         {
-            "name": "Launch Extension",
             "type": "extensionHost",
             "request": "launch",
+            "name": "Extension",
             "runtimeExecutable": "${execPath}",
             "args": [
                 "--extensionDevelopmentPath=${workspaceRoot}"
@@ -14,8 +14,30 @@
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceRoot}/dist/src/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debugger",
+            "cwd": "${workspaceRoot}",
+            "program": "${workspaceRoot}/src/debugger/debugger.ts",
+            "args": [
+                "--server=4711"
             ],
-            "preLaunchTask": "compile"
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceRoot}/dist/src/**/*.js"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Extension + Debugger",
+            "configurations": [
+                "Extension",
+                "Debugger"
+            ]
         }
     ]
 }

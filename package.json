@@ -41,7 +41,7 @@
       {
         "type": "comet2",
         "label": "COMET2 Debug",
-        "program": "./dist/src/debugger.js",
+        "program": "./dist/src/debugger/debugger.js",
         "runtime": "node",
         "initialConfigurations": [
           {
