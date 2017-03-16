@@ -9,6 +9,8 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { readFileSync } from "fs";
 import { basename } from "path";
 import { LaunchRequestArguments } from "./launchRequestArguments";
+import Comet2Debugger from "./comet2/comet2Debugger";
+import { printDiagnostic } from "./ui/print";
 
 
 export default class Comet2DebugSession extends DebugSession {
@@ -38,12 +40,20 @@ export default class Comet2DebugSession extends DebugSession {
 
     private _variableHandles = new Handles<string>();
 
+    private _debugger: Comet2Debugger;
+
     public constructor() {
         super();
 
         // テキストの先頭を0行目0文字目とする(zero-based)
         this.setDebuggerLinesStartAt1(false);
         this.setDebuggerColumnsStartAt1(false);
+
+        this._debugger = new Comet2Debugger();
+
+        this._debugger.onstdout = (s: string) => {
+            this.sendEvent(new OutputEvent(s, "stdout"));
+        };
     }
 
 	/**
@@ -73,17 +83,37 @@ export default class Comet2DebugSession extends DebugSession {
         // ファイルの内容を読み込む
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
 
-        // configで'stopOnEntry'がtrueになら
-        // ブレークポイントが設定されていなくても一行目でストップさせる
-        if (args.stopOnEntry) {
-            this._currentLine = 0;
-            this.sendResponse(response);
+        const diagnostics = this._debugger.launch(this._sourceFile);
 
-            // 一行目で停止する
-            this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
+        const successCompile = diagnostics.length == 0;
+
+        if (successCompile) {
+            // configで'stopOnEntry'がtrueになら
+            // ブレークポイントが設定されていなくても一行目でストップさせる
+            if (args.stopOnEntry) {
+                this._currentLine = 0;
+                this.sendResponse(response);
+
+                // 一行目で停止する
+                this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
+            } else {
+                this.sendResponse(response);
+                // プログラムを実行する
+                this._debugger.run();
+                this.sendEvent(new TerminatedEvent());
+                // ブレークポイントや例外に当たるまで進める
+                // this.continueRequest(<DebugProtocol.ContinueResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
+            }
         } else {
-            // ブレークポイントや例外に当たるまで進める
-            this.continueRequest(<DebugProtocol.ContinueResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
+            // Outputイベントのcategoryを'stderr'にすると
+            // vscodeで赤字で表示される
+            this.sendEvent(new OutputEvent("コンパイルエラー", "stderr"));
+            diagnostics
+                .map(diagnostic => new OutputEvent(printDiagnostic(diagnostic), "stderr"))
+                .forEach(event => this.sendEvent(event));
+
+            this.sendResponse(response);
+            this.sendEvent(new TerminatedEvent());
         }
     }
 
