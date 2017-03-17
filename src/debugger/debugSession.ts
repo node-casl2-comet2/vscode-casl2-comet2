@@ -206,7 +206,8 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-        for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
+        let nextLine = this._currentLine + 1;
+        while (true) {
             const stepResult = this._debugger.stepInto(nextLine - 1);
             if (stepResult.programEnd) {
                 this.sendResponse(response);
@@ -221,10 +222,6 @@ export default class Comet2DebugSession extends DebugSession {
 
             nextLine = stepResult.nextLine;
         }
-
-        // これ以上行がなければデバッグを終了する
-        this.sendResponse(response);
-        this.sendEvent(new TerminatedEvent());
     }
 
     // vscodeのStep Overに相当
@@ -256,7 +253,8 @@ export default class Comet2DebugSession extends DebugSession {
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
         const stackFrameDepth = this._debugger.stackFrameCount;
 
-        for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
+        let nextLine = this._currentLine + 1
+        while (true) {
             const inst = this._debugger.getState().nextInstruction!.name;
             const stepResult = this._debugger.stepInto(nextLine - 1);
             if (stepResult.programEnd) {
@@ -280,10 +278,6 @@ export default class Comet2DebugSession extends DebugSession {
 
             nextLine = stepResult.nextLine;
         }
-
-        // これ以上行がなければデバッグを終了する
-        this.sendResponse(response);
-        this.sendEvent(new TerminatedEvent());
     }
 
     protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
