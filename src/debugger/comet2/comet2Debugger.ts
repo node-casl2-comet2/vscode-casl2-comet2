@@ -47,29 +47,13 @@ export default class Comet2Debugger {
         return compileResult.diagnostics;
     }
 
-    run(): void {
-        if (this._compileResult === undefined) throw new Error();
-
-        const { success, hexes } = this._compileResult;
-        if (!success || hexes === undefined) throw new Error();
-
-        this._comet2.init(hexes);
-
-        while (true) {
-            const end = this._comet2.run();
-            if (end) {
-                break;
-            }
-        }
-    }
-
-    step(line: number): boolean {
+    stepInto(line: number): boolean {
         if (this._subroutineLines.indexOf(line) !== -1) {
             // START命令は実際には何もしない
             return false;
         }
 
-        const end = this._comet2.run();
+        const end = this._comet2.stepInto();
         return end;
     }
 

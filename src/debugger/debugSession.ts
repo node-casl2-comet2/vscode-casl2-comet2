@@ -207,7 +207,7 @@ export default class Comet2DebugSession extends DebugSession {
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
         for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
-            const programEnd = this._debugger.step(nextLine - 1);
+            const programEnd = this._debugger.stepInto(nextLine - 1);
             if (programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
@@ -235,7 +235,7 @@ export default class Comet2DebugSession extends DebugSession {
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
         // 一行実行して停止
         const nextLine = this._currentLine + 1;
-        const programEnd = this._debugger.step(nextLine - 1);
+        const programEnd = this._debugger.stepInto(nextLine - 1);
 
         if (programEnd) {
             this.sendResponse(response);
