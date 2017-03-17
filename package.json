@@ -114,11 +114,13 @@
     "test": "node ./node_modules/vscode/bin/test"
   },
   "dependencies": {
+    "lodash": "^4.17.4",
     "vscode-debugadapter": "^1.18.0-pre.1",
     "vscode-debugprotocol": "^1.17.0",
     "vscode-languageclient": "^3.1.0"
   },
   "devDependencies": {
+    "@types/lodash": "^4.14.55",
     "@types/mocha": "^2.2.39",
     "@types/node": "^7.0.7",
     "vscode": "^1.0.5"

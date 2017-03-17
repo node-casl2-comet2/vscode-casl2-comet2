@@ -2,6 +2,7 @@
 
 import { Comet2, Comet2Option, Output, Input } from "@maxfield/node-comet2-core";
 import { Casl2, Casl2CompileOption, Diagnostic, CompileResult } from "@maxfield/node-casl2-core";
+import * as _ from "lodash";
 
 export default class Comet2Debugger {
     private _casl2: Casl2;
@@ -11,7 +12,7 @@ export default class Comet2Debugger {
     private _stdout: Output;
     private _stdin: Input;
     private _subroutineLines: Array<number>;
-    private _stackFrames: Array<string>;
+    private _stackFrames: Array<SubroutineCallInfo>;
 
     set onstdout(stdout: Output) {
         this._stdout = stdout;
@@ -23,6 +24,10 @@ export default class Comet2Debugger {
 
     get stackFrameCount() {
         return this._stackFrames.length;
+    }
+
+    get stackFrames() {
+        return this._stackFrames;
     }
 
     constructor() {
@@ -52,8 +57,10 @@ export default class Comet2Debugger {
         this._subroutineLines = Array.from(compileResult.debuggingInfo!.subroutineMap.values());
 
         this._comet2.init(compileResult.hexes!);
-        this._stackFrames = ["Main"];
 
+        // 最初のSTART命令のラベルをスタックフレームに積んでおく
+        const entryPoint = _.minBy(this.getDebugInfo().subroutinesInfo, x => x.startLine).subroutine;
+        this._stackFrames = [{ subroutine: entryPoint, callLine: -1 }];
         return compileResult.diagnostics;
     }
 
@@ -78,7 +85,11 @@ export default class Comet2Debugger {
             if (subroutine === undefined) {
                 throw new Error();
             }
-            this._stackFrames.push(subroutine.subroutine);
+            this._stackFrames[this._stackFrames.length - 1].callLine = executeLine;
+            this._stackFrames.push({
+                subroutine: subroutine.subroutine,
+                callLine: -1
+            });
         }
         if (inst === "RET") {
             this._stackFrames.pop();
@@ -107,4 +118,16 @@ export default class Comet2Debugger {
 export interface StepInfo {
     programEnd: boolean;
     nextLine: number;
+}
+
+export interface SubroutineCallInfo {
+    /**
+     * サブルーチンをコールしたサブルーチン名
+     */
+    subroutine: string;
+
+    /**
+     * サブルーチンをコールしたCALL命令の行番号
+     */
+    callLine: number;
 }

@@ -7,7 +7,7 @@ import {
 } from "vscode-debugadapter";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { readFileSync } from "fs";
-import { basename } from "path";
+import * as path from "path";
 import { LaunchRequestArguments } from "./launchRequestArguments";
 import Comet2Debugger from "./comet2/comet2Debugger";
 import { printDiagnostic } from "./ui/print";
@@ -158,25 +158,36 @@ export default class Comet2DebugSession extends DebugSession {
         // TODO: 関数呼び出しの関係をスタックトレースに表示する
 
         // スペースで区切って単語に分ける
-        const words = ["hello"];
+        const stackframes = this._debugger.stackFrames;
 
         const startFrame = typeof args.startFrame === "number" ? args.startFrame : 0;
-        const maxLevels = typeof args.levels === "number" ? args.levels : words.length - startFrame;
-        const endFrame = Math.min(startFrame + maxLevels, words.length);
+        const maxLevels = typeof args.levels === "number" ? args.levels : stackframes.length - startFrame;
+        const endFrame = Math.min(startFrame + maxLevels, stackframes.length);
 
         const frames = new Array<StackFrame>();
-        for (let i = startFrame; i < endFrame; i++) {
-            const name = words[i];
-            const frame = new StackFrame(i, `${name}(${i})`, new Source(basename(this._sourceFile),
-                this.convertDebuggerPathToClient(this._sourceFile)),
-                this.convertDebuggerLineToClient(this._currentLine), 0);
+        for (let i = endFrame - 1; i >= startFrame; i--) {
+            const stackframe = stackframes[i];
+            const frameNumber = i;
+            const frameName = stackframe.subroutine;
+            const source = new Source(path.basename(this._sourceFile), this.convertDebuggerPathToClient(this._sourceFile));
+            const line = i == endFrame - 1
+                ? this.convertDebuggerLineToClient(this._currentLine)
+                : this.convertDebuggerLineToClient(stackframe.callLine);
+            const character = 0;
+
+            const frame = new StackFrame(
+                frameNumber,
+                frameName,
+                source,
+                line,
+                character);
 
             frames.push(frame);
         }
 
         response.body = {
             stackFrames: frames,
-            totalFrames: words.length
+            totalFrames: stackframes.length
         };
         this.sendResponse(response);
     }
