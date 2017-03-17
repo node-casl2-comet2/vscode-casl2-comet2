@@ -87,11 +87,11 @@ export default class Comet2DebugSession extends DebugSession {
 
         const successCompile = diagnostics.length == 0;
 
+        this._currentLine = 0;
         if (successCompile) {
             // configで'stopOnEntry'がtrueになら
             // ブレークポイントが設定されていなくても一行目でストップさせる
             if (args.stopOnEntry) {
-                this._currentLine = 0;
                 this.sendResponse(response);
 
                 // 一行目で停止する
@@ -206,21 +206,21 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-        let nextLine = this._currentLine + 1;
+        let executeLine = this._currentLine;
+
         while (true) {
-            const stepResult = this._debugger.stepInto(nextLine - 1);
+            const stepResult = this._debugger.stepInto(executeLine);
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
                 return;
             }
 
-            // ブレークポイントなどで止まる必要があればまた止まる
-            if (this.hitBreakPointOrException(response, nextLine)) {
+            executeLine = stepResult.nextLine;
+
+            if (this.hitBreakPointOrException(response, executeLine)) {
                 return;
             }
-
-            nextLine = stepResult.nextLine;
         }
     }
 
@@ -233,8 +233,8 @@ export default class Comet2DebugSession extends DebugSession {
     // vscodeのStep Intoに相当
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
         // 一行実行して停止
-        const nextLine = this._currentLine + 1;
-        const stepResult = this._debugger.stepInto(nextLine - 1);
+        const executeLine = this._currentLine;
+        const stepResult = this._debugger.stepInto(executeLine);
 
         if (stepResult.programEnd) {
             this.sendResponse(response);
@@ -253,17 +253,19 @@ export default class Comet2DebugSession extends DebugSession {
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
         const stackFrameDepth = this._debugger.stackFrameCount;
 
-        let nextLine = this._currentLine + 1
+        let executeLine = this._currentLine;
         while (true) {
             const inst = this._debugger.getState().nextInstruction!.name;
-            const stepResult = this._debugger.stepInto(nextLine - 1);
+            const stepResult = this._debugger.stepInto(executeLine);
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
                 return;
             }
 
-            if (this.hitBreakPointOrException(response, nextLine)) {
+            executeLine = stepResult.nextLine;
+
+            if (this.hitBreakPointOrException(response, executeLine)) {
                 return;
             }
 
@@ -275,8 +277,6 @@ export default class Comet2DebugSession extends DebugSession {
                 this.sendEvent(new StoppedEvent("step", Comet2DebugSession.THREAD_ID));
                 return;
             }
-
-            nextLine = stepResult.nextLine;
         }
     }
 
@@ -292,15 +292,15 @@ export default class Comet2DebugSession extends DebugSession {
 	/**
 	 * ブレークポイントや例外が発生したらブレークする
 	 */
-    private hitBreakPointOrException(response: DebugProtocol.Response, ln: number): boolean {
+    private hitBreakPointOrException(response: DebugProtocol.Response, line: number): boolean {
         // 対象のファイルのブレークポイントを取得する
         const breakpoints = this._breakPoints.get(this._sourceFile);
 
         // ブレークポイントがあれば止める
         if (breakpoints) {
-            const bps = breakpoints.filter(bp => bp.line === this.convertDebuggerLineToClient(ln));
+            const bps = breakpoints.filter(bp => bp.line === this.convertDebuggerLineToClient(line));
             if (bps.length > 0) {
-                this._currentLine = ln;
+                this._currentLine = line;
 
                 this.sendResponse(response);
 
@@ -312,7 +312,7 @@ export default class Comet2DebugSession extends DebugSession {
         const exceptionThrown = false;
         // 例外が発生したら例外としてブレークする
         if (exceptionThrown) {
-            this._currentLine = ln;
+            this._currentLine = line;
             this.sendResponse(response);
             this.sendEvent(new StoppedEvent("exception", Comet2DebugSession.THREAD_ID));
             return true;

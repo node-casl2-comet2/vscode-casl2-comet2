@@ -57,13 +57,13 @@ export default class Comet2Debugger {
         return compileResult.diagnostics;
     }
 
-    stepInto(line: number): StepInfo {
+    stepInto(executeLine: number): StepInfo {
         const inst = this.getState().nextInstruction!.name;
         // START命令は実際には何もしない
-        if (this._subroutineLines.indexOf(line) != -1) {
+        if (this._subroutineLines.indexOf(executeLine) != -1) {
             return {
                 programEnd: false,
-                nextLine: line + 1
+                nextLine: executeLine + 1
             };
         }
 
