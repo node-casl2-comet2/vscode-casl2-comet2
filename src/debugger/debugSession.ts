@@ -226,8 +226,28 @@ export default class Comet2DebugSession extends DebugSession {
 
     // vscodeのStep Overに相当
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
-        console.log("Step Over");
-        this.sendResponse(response);
+        const inst = this._debugger.getState().nextInstruction!.name;
+        if (inst === "CALL") {
+            // CALL命令の時は一行だけ実行してブレークポイントなどに
+            // 当たらなければ続けてStep Outをすることに相当する
+            const executeLine = this._currentLine;
+            const stepResult = this._debugger.stepInto(executeLine);
+
+            if (stepResult.programEnd) {
+                this.sendResponse(response);
+                this.sendEvent(new TerminatedEvent());
+                return;
+            }
+
+            if (this.hitBreakPointOrException(response, stepResult.nextLine)) {
+                return;
+            }
+
+            this.stepOutRequest(<DebugProtocol.StepOutResponse>response, { threadId: Comet2DebugSession.THREAD_ID })
+        } else {
+            // CALL命令でない時はStep Intoと同じ
+            this.stepInRequest(<DebugProtocol.StepInResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
+        }
     }
 
     // vscodeのStep Intoに相当
