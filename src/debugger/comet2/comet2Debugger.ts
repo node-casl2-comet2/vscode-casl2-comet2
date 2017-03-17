@@ -11,6 +11,7 @@ export default class Comet2Debugger {
     private _stdout: Output;
     private _stdin: Input;
     private _subroutineLines: Array<number>;
+    private _stackFrames: Array<string>;
 
     set onstdout(stdout: Output) {
         this._stdout = stdout;
@@ -18,6 +19,10 @@ export default class Comet2Debugger {
 
     set onstdin(stdin: Input) {
         this._stdin = stdin;
+    }
+
+    get stackFrameCount() {
+        return this._stackFrames.length;
     }
 
     constructor() {
@@ -35,6 +40,10 @@ export default class Comet2Debugger {
         }, stdin, stdout);
     }
 
+    private getDebugInfo() {
+        return this._compileResult.debuggingInfo!;
+    }
+
     launch(sourcePath: string): Array<Diagnostic> {
         this._sourcePath = sourcePath;
 
@@ -43,21 +52,59 @@ export default class Comet2Debugger {
         this._subroutineLines = Array.from(compileResult.debuggingInfo!.subroutineMap.values());
 
         this._comet2.init(compileResult.hexes!);
+        this._stackFrames = ["Main"];
 
         return compileResult.diagnostics;
     }
 
-    stepInto(line: number): boolean {
-        if (this._subroutineLines.indexOf(line) !== -1) {
-            // START命令は実際には何もしない
-            return false;
+    stepInto(line: number): StepInfo {
+        const inst = this.getState().nextInstruction!.name;
+        // START命令は実際には何もしない
+        if (this._subroutineLines.indexOf(line) != -1) {
+            return {
+                programEnd: false,
+                nextLine: line + 1
+            };
         }
 
         const end = this._comet2.stepInto();
-        return end;
+
+        const pr = this.getState().PR;
+        const isCall = inst === "CALL";
+        const nextLine = this.getNextLine(pr, isCall);
+
+        if (isCall) {
+            const subroutine = this.getDebugInfo().subroutinesInfo.find(x => x.startLine == nextLine);
+            if (subroutine === undefined) {
+                throw new Error();
+            }
+            this._stackFrames.push(subroutine.subroutine);
+        }
+        if (inst === "RET") {
+            this._stackFrames.pop();
+        }
+        return {
+            programEnd: end,
+            nextLine: nextLine
+        };
+    }
+
+    getNextLine(address: number, isCall: boolean) {
+        const map = isCall
+            ? this._compileResult.debuggingInfo!.subroutineMap
+            : this._compileResult.debuggingInfo!.addressLineMap;
+
+        const nextLine = map.get(address);
+        if (nextLine === undefined) throw new Error();
+        return nextLine;
     }
 
     getState() {
         return this._comet2.getState();
     }
+}
+
+export interface StepInfo {
+    programEnd: boolean;
+    nextLine: number;
 }

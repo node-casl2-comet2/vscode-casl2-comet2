@@ -207,17 +207,19 @@ export default class Comet2DebugSession extends DebugSession {
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
         for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
-            const programEnd = this._debugger.stepInto(nextLine - 1);
-            if (programEnd) {
+            const stepResult = this._debugger.stepInto(nextLine - 1);
+            if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
                 return;
             }
 
             // ブレークポイントなどで止まる必要があればまた止まる
-            if (this.fireEventsForLine(response, nextLine)) {
+            if (this.hitBreakPointOrException(response, nextLine)) {
                 return;
             }
+
+            nextLine = stepResult.nextLine;
         }
 
         // これ以上行がなければデバッグを終了する
@@ -235,9 +237,9 @@ export default class Comet2DebugSession extends DebugSession {
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
         // 一行実行して停止
         const nextLine = this._currentLine + 1;
-        const programEnd = this._debugger.stepInto(nextLine - 1);
+        const stepResult = this._debugger.stepInto(nextLine - 1);
 
-        if (programEnd) {
+        if (stepResult.programEnd) {
             this.sendResponse(response);
             this.sendEvent(new TerminatedEvent());
             return;
@@ -245,15 +247,43 @@ export default class Comet2DebugSession extends DebugSession {
 
         this.sendResponse(response);
         // this._currentLineを設定することでストップする位置を知らせる
-        this._currentLine = nextLine;
+        this._currentLine = stepResult.nextLine;
         // 停止
         this.sendEvent(new StoppedEvent("step", Comet2DebugSession.THREAD_ID));
     }
 
     // vscodeのStep Outに相当
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
-        console.log("Step Out");
+        const stackFrameDepth = this._debugger.stackFrameCount;
+
+        for (let nextLine = this._currentLine + 1; nextLine < this._sourceLines.length; nextLine++) {
+            const inst = this._debugger.getState().nextInstruction!.name;
+            const stepResult = this._debugger.stepInto(nextLine - 1);
+            if (stepResult.programEnd) {
+                this.sendResponse(response);
+                this.sendEvent(new TerminatedEvent());
+                return;
+            }
+
+            if (this.hitBreakPointOrException(response, nextLine)) {
+                return;
+            }
+
+            // スタックフレームでいう一つしたのフレームに移動したら止める
+            const endSubroutine = this._debugger.stackFrameCount == stackFrameDepth - 1;
+            if (endSubroutine) {
+                this._currentLine = stepResult.nextLine;
+                this.sendResponse(response);
+                this.sendEvent(new StoppedEvent("step", Comet2DebugSession.THREAD_ID));
+                return;
+            }
+
+            nextLine = stepResult.nextLine;
+        }
+
+        // これ以上行がなければデバッグを終了する
         this.sendResponse(response);
+        this.sendEvent(new TerminatedEvent());
     }
 
     protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
@@ -268,7 +298,7 @@ export default class Comet2DebugSession extends DebugSession {
 	/**
 	 * ブレークポイントや例外が発生したらブレークする
 	 */
-    private fireEventsForLine(response: DebugProtocol.Response, ln: number): boolean {
+    private hitBreakPointOrException(response: DebugProtocol.Response, ln: number): boolean {
         // 対象のファイルのブレークポイントを取得する
         const breakpoints = this._breakPoints.get(this._sourceFile);
 
