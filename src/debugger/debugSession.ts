@@ -121,14 +121,21 @@ export default class Comet2DebugSession extends DebugSession {
 
         if (args.breakpoints) {
             // ブレークポイントが付けられている行数を取得する
-            const breakPointLines = args.breakpoints.map(x => x.line);
-            const lines = readFileSync(path).toString().split("");
+            const breakPointLines = args.breakpoints
+                .map(x => this.convertClientLineToDebugger(x.line));
 
             const breakpoints = new Array<Breakpoint>();
 
+            // launchイベントよりも先にリクエストされるので
+            // 直接ファイルを読むことで対応することになる
+            const lines = readFileSync(path).toString().split(/\r?\n/);
+            const ignoreLineRegex = /^\s*(;.*)?$/;
             for (const bpLine of breakPointLines) {
-                const verify = true;
-                const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(verify, bpLine);
+                // TODO: テストする
+                // 空白行やコメント行にはブレークポイントを許可しない
+                const line = lines[bpLine];
+                const verify = (line.match(ignoreLineRegex) || undefined) === undefined;
+                const breakpoint = <DebugProtocol.Breakpoint>new Breakpoint(verify, this.convertDebuggerLineToClient(bpLine));
                 // ブレークポイントIDを設定する
                 breakpoint.id = this._breakpointId++;
                 breakpoints.push(breakpoint);
