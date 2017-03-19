@@ -97,6 +97,10 @@ export default class Comet2DebugSession extends DebugSession {
                 // 一行目で停止する
                 this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
             } else {
+                if (this.hitBreakPointOrException(response, this._currentLine)) {
+                    return;
+                }
+
                 // ブレークポイントや例外に当たるまで進める
                 this.continueRequest(<DebugProtocol.ContinueResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
             }
