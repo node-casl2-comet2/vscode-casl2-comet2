@@ -155,9 +155,6 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
-        // TODO: 関数呼び出しの関係をスタックトレースに表示する
-
-        // スペースで区切って単語に分ける
         const stackframes = this._debugger.stackFrames;
 
         const startFrame = typeof args.startFrame === "number" ? args.startFrame : 0;
@@ -367,34 +364,4 @@ export default class Comet2DebugSession extends DebugSession {
         };
         this.sendResponse(response);
     }
-
-    // TODO: COMET2のステップバックが実装されたら実装する
-    // 緑の逆再生ボタンが押された時
-    // protected reverseContinueRequest(response: DebugProtocol.ReverseContinueResponse, args: DebugProtocol.ReverseContinueArguments): void {
-    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
-    //         if (this.fireEventsForLine(response, ln)) {
-    //             return;
-    //         }
-    //     }
-
-    //     // 最初の行に戻ったら止める
-    //     this.sendResponse(response);
-    //     this._currentLine = 0;
-    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
-    // }
-    //
-    // TODO: COMET2のステップバックが実装されたら実装する
-    //
-    // protected stepBackRequest(response: DebugProtocol.StepBackResponse, args: DebugProtocol.StepBackArguments): void {
-    //     for (let ln = this._currentLine - 1; ln >= 0; ln--) {
-    //         if (this.fireStepEvent(response, ln)) {
-    //             return;
-    //         }
-    //     }
-
-    //     // 最初の行に戻ったら止める
-    //     this.sendResponse(response);
-    //     this._currentLine = 0;
-    //     this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
-    // }
 }
