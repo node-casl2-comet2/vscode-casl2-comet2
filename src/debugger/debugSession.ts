@@ -200,6 +200,24 @@ export default class Comet2DebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    private createVariables() {
+        const variables: Array<DebugProtocol.Variable> = [];
+        const state = this._debugger.getState();
+
+        // GR8が有効だとしてもGR8はSPに一致するので必要ない
+        const gr = [0, 1, 2, 3, 4, 5, 6, 7].map(i => "GR" + i).map(gr => createVariable(gr, state.GR[gr]));
+        variables.push(...gr);
+
+        const pr = createVariable("PR", state.PR);
+        const sp = createVariable("SP", state.SP);
+        const of = createVariable("OF", boolToBin(state.FR.OF));
+        const sf = createVariable("SF", boolToBin(state.FR.SF));
+        const zf = createVariable("ZF", boolToBin(state.FR.ZF));
+        variables.push(pr, sp, of, sf, zf);
+
+        return variables;
+    }
+
     protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
         const variables: Array<DebugProtocol.Variable> = [];
         const state = this._debugger.getState();
@@ -316,10 +334,26 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
-        response.body = {
-            result: `evaluate(context: '${args.context}', '${args.expression}')`,
-            variablesReference: 0
-        };
+        const { context, expression } = args;
+
+        const variables = this.createVariables();
+        const variable = variables.find(x => x.name === expression);
+        if (variable === undefined) {
+            response.success = false;
+            response.message = "利用できません。";
+            this.sendResponse(response);
+            return;
+        }
+
+        // repl : vscodeでいうDEBUG CONSOLEで式の評価がリクエストされた場合
+        // hover: エディタ上の変数などにホバーされた場合
+        if (context === "repl" || context === "hover") {
+            response.body = {
+                result: variable.value,
+                type: variable.type,
+                variablesReference: variable.variablesReference
+            };
+        }
 
         this.sendResponse(response);
     }
