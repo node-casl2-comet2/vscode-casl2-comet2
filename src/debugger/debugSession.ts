@@ -76,13 +76,22 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 起動時に実行される
     protected launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
+        const { program, comet2Option, stopOnEntry } = args;
+        const validSource = path.extname(program) === ".cas";
+        if (!validSource) {
+            this.sendErrorResponse(response, 3000,
+                "対応していないファイルです。実行するファイルの拡張子は'.cas'である必要があります。");
+            this.sendEvent(new TerminatedEvent());
+            return;
+        }
+
         // ファイル名を受け取る
-        this._sourceFile = args.program;
+        this._sourceFile = program;
         // ファイルの内容を読み込む
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
         this._exceptionOccured = false;
 
-        this._debugger = new Comet2Debugger(args.comet2Option);
+        this._debugger = new Comet2Debugger(comet2Option);
 
         this._debugger.onstdout = (s: string) => {
             this.sendEvent(new OutputEvent(s, "stdout"));
@@ -95,7 +104,7 @@ export default class Comet2DebugSession extends DebugSession {
         if (successCompile) {
             // configで'stopOnEntry'がtrueになら
             // ブレークポイントが設定されていなくても一行目でストップさせる
-            if (args.stopOnEntry) {
+            if (stopOnEntry) {
                 this.sendResponse(response);
 
                 // 一行目で停止する
