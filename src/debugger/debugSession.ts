@@ -9,9 +9,10 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { readFileSync } from "fs";
 import * as path from "path";
 import { LaunchRequestArguments } from "./launchRequestArguments";
-import Comet2Debugger from "./comet2/comet2Debugger";
+import { Comet2Debugger, StepInfo } from "./comet2/comet2Debugger";
 import { printDiagnostic } from "./ui/print";
 import { createVariable, boolToBin } from "./variables";
+import { RuntimeError } from "@maxfield/node-comet2-core";
 
 
 export default class Comet2DebugSession extends DebugSession {
@@ -42,6 +43,8 @@ export default class Comet2DebugSession extends DebugSession {
 
     private _debugger: Comet2Debugger;
 
+    private _exceptionOccured: boolean;
+
     public constructor() {
         super();
 
@@ -69,6 +72,7 @@ export default class Comet2DebugSession extends DebugSession {
             // 変数などにホバーしたら式を評価して表示する
             response.body.supportsEvaluateForHovers = true;
 
+            // TODO: サポートしている機能を明示する
             // ステップバックボタンを表示させる
             // response.body.supportsStepBack = true;
         }
@@ -82,6 +86,7 @@ export default class Comet2DebugSession extends DebugSession {
         this._sourceFile = args.program;
         // ファイルの内容を読み込む
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
+        this._exceptionOccured = false;
 
         const diagnostics = this._debugger.launch(this._sourceFile);
 
@@ -97,7 +102,7 @@ export default class Comet2DebugSession extends DebugSession {
                 // 一行目で停止する
                 this.sendEvent(new StoppedEvent("entry", Comet2DebugSession.THREAD_ID));
             } else {
-                if (this.hitBreakPointOrException(response, this._currentLine)) {
+                if (this.hitBreakPoint(response, this._currentLine)) {
                     return;
                 }
 
@@ -204,24 +209,6 @@ export default class Comet2DebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
-    private createVariables() {
-        const variables: Array<DebugProtocol.Variable> = [];
-        const state = this._debugger.getState();
-
-        // GR8が有効だとしてもGR8はSPに一致するので必要ない
-        const gr = [0, 1, 2, 3, 4, 5, 6, 7].map(i => "GR" + i).map(gr => createVariable(gr, state.GR[gr]));
-        variables.push(...gr);
-
-        const pr = createVariable("PR", state.PR);
-        const sp = createVariable("SP", state.SP);
-        const of = createVariable("OF", boolToBin(state.FR.OF));
-        const sf = createVariable("SF", boolToBin(state.FR.SF));
-        const zf = createVariable("ZF", boolToBin(state.FR.ZF));
-        variables.push(pr, sp, of, sf, zf);
-
-        return variables;
-    }
-
     protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
         const variables: Array<DebugProtocol.Variable> = [];
         const state = this._debugger.getState();
@@ -243,10 +230,17 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 緑の再生ボタンが押された時
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
+        if (this._exceptionOccured) {
+            this.forceTerminate(response);
+            return;
+        }
+
         let executeLine = this._currentLine;
 
         while (true) {
-            const stepResult = this._debugger.stepInto(executeLine);
+            const stepResult = this.step(executeLine, response);
+            if (!stepResult) return;
+
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
@@ -255,7 +249,7 @@ export default class Comet2DebugSession extends DebugSession {
 
             executeLine = stepResult.nextLine;
 
-            if (this.hitBreakPointOrException(response, executeLine)) {
+            if (this.hitBreakPoint(response, executeLine)) {
                 return;
             }
         }
@@ -263,12 +257,18 @@ export default class Comet2DebugSession extends DebugSession {
 
     // vscodeのStep Overに相当
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
+        if (this._exceptionOccured) {
+            this.forceTerminate(response);
+            return;
+        }
+
         const inst = this._debugger.getState().nextInstruction!.name;
         if (inst === "CALL") {
             // CALL命令の時は一行だけ実行してブレークポイントなどに
             // 当たらなければ続けてStep Outをすることに相当する
             const executeLine = this._currentLine;
-            const stepResult = this._debugger.stepInto(executeLine);
+            const stepResult = this.step(executeLine, response);
+            if (!stepResult) return;
 
             if (stepResult.programEnd) {
                 this.sendResponse(response);
@@ -276,7 +276,7 @@ export default class Comet2DebugSession extends DebugSession {
                 return;
             }
 
-            if (this.hitBreakPointOrException(response, stepResult.nextLine)) {
+            if (this.hitBreakPoint(response, stepResult.nextLine)) {
                 return;
             }
 
@@ -289,9 +289,15 @@ export default class Comet2DebugSession extends DebugSession {
 
     // vscodeのStep Intoに相当
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
+        if (this._exceptionOccured) {
+            this.forceTerminate(response);
+            return;
+        }
+
         // 一行実行して停止
         const executeLine = this._currentLine;
-        const stepResult = this._debugger.stepInto(executeLine);
+        const stepResult = this.step(executeLine, response);
+        if (!stepResult) return;
 
         if (stepResult.programEnd) {
             this.sendResponse(response);
@@ -308,12 +314,19 @@ export default class Comet2DebugSession extends DebugSession {
 
     // vscodeのStep Outに相当
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+        if (this._exceptionOccured) {
+            this.forceTerminate(response);
+            return;
+        }
+
         const stackFrameDepth = this._debugger.stackFrameCount;
 
         let executeLine = this._currentLine;
         while (true) {
             const inst = this._debugger.getState().nextInstruction!.name;
-            const stepResult = this._debugger.stepInto(executeLine);
+            const stepResult = this.step(executeLine, response);
+            if (!stepResult) return;
+
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
@@ -322,7 +335,7 @@ export default class Comet2DebugSession extends DebugSession {
 
             executeLine = stepResult.nextLine;
 
-            if (this.hitBreakPointOrException(response, executeLine)) {
+            if (this.hitBreakPoint(response, executeLine)) {
                 return;
             }
 
@@ -362,10 +375,19 @@ export default class Comet2DebugSession extends DebugSession {
         this.sendResponse(response);
     }
 
+    protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+        response.body = {
+            threads: [
+                new Thread(Comet2DebugSession.THREAD_ID, "thread 1")
+            ]
+        };
+        this.sendResponse(response);
+    }
+
 	/**
 	 * ブレークポイントや例外が発生したらブレークする
 	 */
-    private hitBreakPointOrException(response: DebugProtocol.Response, line: number): boolean {
+    private hitBreakPoint(response: DebugProtocol.Response, line: number): boolean {
         // 対象のファイルのブレークポイントを取得する
         const breakpoints = this._breakPoints.get(this._sourceFile);
 
@@ -382,24 +404,46 @@ export default class Comet2DebugSession extends DebugSession {
             }
         }
 
-        const exceptionThrown = false;
-        // 例外が発生したら例外としてブレークする
-        if (exceptionThrown) {
-            this._currentLine = line;
-            this.sendResponse(response);
-            this.sendEvent(new StoppedEvent("exception", Comet2DebugSession.THREAD_ID));
-            return true;
-        }
-
         return false;
     }
 
-    protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = {
-            threads: [
-                new Thread(Comet2DebugSession.THREAD_ID, "thread 1")
-            ]
-        };
+    private step(executeLine: number, response: DebugProtocol.Response): StepInfo | undefined {
+        try {
+            const stepResult = this._debugger.stepInto(executeLine);
+            return stepResult;
+        } catch (error) {
+            this._currentLine = executeLine;
+            this.sendResponse(response);
+            this.throwException(error);
+            return undefined;
+        }
+    }
+
+    private throwException(error: RuntimeError) {
+        this._exceptionOccured = true;
+        this.sendEvent(new StoppedEvent("exception", Comet2DebugSession.THREAD_ID, error.toString()));
+    }
+
+    private forceTerminate(response: DebugProtocol.Response) {
         this.sendResponse(response);
+        this.sendEvent(new TerminatedEvent());
+    }
+
+    private createVariables() {
+        const variables: Array<DebugProtocol.Variable> = [];
+        const state = this._debugger.getState();
+
+        // GR8が有効だとしてもGR8はSPに一致するので必要ない
+        const gr = [0, 1, 2, 3, 4, 5, 6, 7].map(i => "GR" + i).map(gr => createVariable(gr, state.GR[gr]));
+        variables.push(...gr);
+
+        const pr = createVariable("PR", state.PR);
+        const sp = createVariable("SP", state.SP);
+        const of = createVariable("OF", boolToBin(state.FR.OF));
+        const sf = createVariable("SF", boolToBin(state.FR.SF));
+        const zf = createVariable("ZF", boolToBin(state.FR.ZF));
+        variables.push(pr, sp, of, sf, zf);
+
+        return variables;
     }
 }

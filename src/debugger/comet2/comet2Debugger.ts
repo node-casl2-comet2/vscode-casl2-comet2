@@ -4,7 +4,7 @@ import { Comet2, Comet2Option, Output, Input } from "@maxfield/node-comet2-core"
 import { Casl2, Casl2CompileOption, Diagnostic, CompileResult } from "@maxfield/node-casl2-core";
 import * as _ from "lodash";
 
-export default class Comet2Debugger {
+export class Comet2Debugger {
     private _casl2: Casl2;
     private _comet2: Comet2;
     private _sourcePath: string;
@@ -65,7 +65,6 @@ export default class Comet2Debugger {
     }
 
     stepInto(executeLine: number): StepInfo {
-        const inst = this.getState().nextInstruction!.name;
         // START命令は実際には何もしない
         if (this._subroutineLines.indexOf(executeLine) != -1) {
             return {
@@ -74,9 +73,11 @@ export default class Comet2Debugger {
             };
         }
 
+        const inst = this.getState().nextInstruction!.name;
+
         const end = this._comet2.stepInto();
 
-        const pr = this.getState().PR;
+        const pr = this._comet2.PR;
         const isCall = inst === "CALL";
         const nextLine = this.getNextLine(pr, isCall);
 
