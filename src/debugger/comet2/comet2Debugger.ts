@@ -30,7 +30,7 @@ export class Comet2Debugger {
         return this._stackFrames;
     }
 
-    constructor() {
+    constructor(comet2Option?: Comet2Option) {
         // TODO: 設定をクライアントと同期するようにする
         this._casl2 = new Casl2({
             useGR8: true,
@@ -40,9 +40,7 @@ export class Comet2Debugger {
         const stdout: Output = (s: string) => this._stdout(s);
         const stdin: Input = () => this._stdin();
 
-        this._comet2 = new Comet2({
-            useGR8AsSP: true
-        }, stdin, stdout);
+        this._comet2 = new Comet2(comet2Option, stdin, stdout);
     }
 
     private getDebugInfo() {

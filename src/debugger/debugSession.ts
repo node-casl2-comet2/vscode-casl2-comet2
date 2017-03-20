@@ -51,12 +51,6 @@ export default class Comet2DebugSession extends DebugSession {
         // テキストの先頭を0行目0文字目とする(zero-based)
         this.setDebuggerLinesStartAt1(false);
         this.setDebuggerColumnsStartAt1(false);
-
-        this._debugger = new Comet2Debugger();
-
-        this._debugger.onstdout = (s: string) => {
-            this.sendEvent(new OutputEvent(s, "stdout"));
-        };
     }
 
 	/**
@@ -88,6 +82,11 @@ export default class Comet2DebugSession extends DebugSession {
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
         this._exceptionOccured = false;
 
+        this._debugger = new Comet2Debugger(args.comet2Option);
+
+        this._debugger.onstdout = (s: string) => {
+            this.sendEvent(new OutputEvent(s, "stdout"));
+        };
         const diagnostics = this._debugger.launch(this._sourceFile);
 
         const successCompile = diagnostics.length == 0;
