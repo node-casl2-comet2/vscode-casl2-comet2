@@ -89,22 +89,22 @@ export default class Comet2DebugSession extends DebugSession {
             return;
         }
 
-        // CASL2のuseGR8AsSPが指定されていて，COMET2のuseGR8AsSPが設定されていない場合
-        // CASL2の設定を継承する
         const useGR8AsSP = args.commonOptions ? args.commonOptions.useGR8AsSP : undefined;
         let casl2Options = args.casl2Options;
         let comet2Options = args.comet2Options;
 
         if (casl2Options === undefined) {
-            casl2Options = { useGR8AsSP: useGR8AsSP };
-        } else if (casl2Options.useGR8AsSP === undefined) {
-            casl2Options.useGR8AsSP = useGR8AsSP;
+            casl2Options = { useGR8: useGR8AsSP };
+        } else if (casl2Options.useGR8 === undefined) {
+            casl2Options.useGR8 = useGR8AsSP;
         }
 
+        // CASL2のuseGR8が指定されていて，COMET2のuseGR8AsSPが設定されていない場合
+        // CASL2の設定を継承する
         if (comet2Options === undefined) {
-            comet2Options = { useGR8AsSP: casl2Options.useGR8AsSP };
+            comet2Options = { useGR8AsSP: casl2Options.useGR8 };
         } else if (comet2Options.useGR8AsSP === undefined) {
-            comet2Options.useGR8AsSP = casl2Options.useGR8AsSP;
+            comet2Options.useGR8AsSP = casl2Options.useGR8;
         }
 
         // ファイル名を受け取る

@@ -51,7 +51,7 @@
             "program": "${file}",
             "stopOnEntry": false,
             "commonOptions": {
-              "useGR8AsSP": "${config.casl2.useGR8AsSP}"
+              "useGR8AsSP": "${config.casl2.useGR8}"
             },
             "casl2Options": {
               "enableLabelScope": "${config.casl2.enableLabelScope}"
@@ -94,18 +94,18 @@
                 "type": "object",
                 "description": "CASL2とCOMET2の共通オプション",
                 "default": {
-                  "useGR8AsSP": "${config.casl2.useGR8AsSP}"
+                  "useGR8AsSP": "${config.casl2.useGR8}"
                 }
               },
               "casl2Options": {
                 "type": "object",
                 "description": "CASL2のオプション",
                 "default": {
-                  "useGR8AsSP": "${config.casl2.useGR8AsSP}",
+                  "useGR8": "${config.casl2.useGR8}",
                   "enableLabelScope": "${config.casl2.enableLabelScope}"
                 }
               },
-              "comet22Options": {
+              "comet2Options": {
                 "type": "object",
                 "description": "COMET2のオプション",
                 "default": {
