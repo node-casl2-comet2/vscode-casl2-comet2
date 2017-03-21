@@ -30,17 +30,12 @@ export class Comet2Debugger {
         return this._stackFrames;
     }
 
-    constructor(comet2Option?: Comet2Option) {
-        // TODO: 設定をクライアントと同期するようにする
-        this._casl2 = new Casl2({
-            useGR8: true,
-            enableLabelScope: true
-        });
+    constructor(casl2Options: Casl2CompileOption, comet2Options: Comet2Option) {
+        this._casl2 = new Casl2(casl2Options);
 
         const stdout: Output = (s: string) => this._stdout(s);
         const stdin: Input = () => this._stdin();
-
-        this._comet2 = new Comet2(comet2Option, stdin, stdout);
+        this._comet2 = new Comet2(comet2Options, stdin, stdout);
     }
 
     private getDebugInfo() {

@@ -49,7 +49,16 @@
             "request": "launch",
             "name": "Debug current file",
             "program": "${file}",
-            "stopOnEntry": false
+            "stopOnEntry": false,
+            "commonOptions": {
+              "useGR8AsSP": "${config.casl2.useGR8AsSP}"
+            },
+            "casl2Options": {
+              "enableLabelScope": "${config.casl2.enableLabelScope}"
+            },
+            "comet22Options": {
+              "allowSelfModifying": false
+            }
           }
         ],
         "configurationSnippets": [
@@ -80,6 +89,29 @@
                 "type": "boolean",
                 "description": "プログラムを実行してすぐに停止(ブレーク)します。",
                 "default": false
+              },
+              "commonOptions": {
+                "type": "object",
+                "description": "CASL2とCOMET2の共通オプション",
+                "default": {
+                  "useGR8AsSP": "${config.casl2.useGR8AsSP}"
+                }
+              },
+              "casl2Options": {
+                "type": "object",
+                "description": "CASL2のオプション",
+                "default": {
+                  "useGR8AsSP": "${config.casl2.useGR8AsSP}",
+                  "enableLabelScope": "${config.casl2.enableLabelScope}"
+                }
+              },
+              "comet22Options": {
+                "type": "object",
+                "description": "COMET2のオプション",
+                "default": {
+                  "useGR8AsSP": false,
+                  "allowSelfModifying": false
+                }
               }
             }
           }

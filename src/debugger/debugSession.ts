@@ -70,7 +70,8 @@ export default class Comet2DebugSession extends DebugSession {
 
     // 起動時に実行される
     protected launchRequest(response: DebugProtocol.LaunchResponse, args: LaunchRequestArguments): void {
-        const { program, comet2Option, stopOnEntry } = args;
+        const { program, stopOnEntry } = args;
+
         const validSource = path.extname(program) === ".cas";
         if (!validSource) {
             this.sendErrorResponse(response, 3000,
@@ -79,13 +80,31 @@ export default class Comet2DebugSession extends DebugSession {
             return;
         }
 
+        // CASL2のuseGR8AsSPが指定されていて，COMET2のuseGR8AsSPが設定されていない場合
+        // CASL2の設定を継承する
+        const useGR8AsSP = args.commonOptions ? args.commonOptions.useGR8AsSP : undefined;
+        let casl2Options = args.casl2Options;
+        let comet2Options = args.comet2Options;
+
+        if (casl2Options === undefined) {
+            casl2Options = { useGR8AsSP: useGR8AsSP };
+        } else if (casl2Options.useGR8AsSP === undefined) {
+            casl2Options.useGR8AsSP = useGR8AsSP;
+        }
+
+        if (comet2Options === undefined) {
+            comet2Options = { useGR8AsSP: casl2Options.useGR8AsSP };
+        } else if (comet2Options.useGR8AsSP === undefined) {
+            comet2Options.useGR8AsSP = casl2Options.useGR8AsSP;
+        }
+
         // ファイル名を受け取る
         this._sourceFile = program;
         // ファイルの内容を読み込む
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
         this._exceptionOccured = false;
 
-        this._debugger = new Comet2Debugger(comet2Option);
+        this._debugger = new Comet2Debugger(casl2Options, comet2Options);
 
         this._debugger.onstdout = (s: string) => {
             this.sendEvent(new OutputEvent(s, "stdout"));

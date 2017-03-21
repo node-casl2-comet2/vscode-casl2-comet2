@@ -2,6 +2,7 @@
 
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Comet2Option } from "@maxfield/node-comet2-core";
+import { Casl2CompileOption } from "@maxfield/node-casl2-core";
 
 // vscodeのlaunch.jsonに以下のようなデバッグ設定が記述されている
 // 'program'や'stopOnEntry'など，設定プロパティに合わせてインターフェースを作る
@@ -16,5 +17,11 @@ import { Comet2Option } from "@maxfield/node-comet2-core";
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
     program: string;
     stopOnEntry?: boolean;
-    comet2Option?: Comet2Option;
+    commonOptions?: Casl2Comet2CommonOptions;
+    comet2Options?: Comet2Option;
+    casl2Options?: Casl2CompileOption;
+}
+
+export interface Casl2Comet2CommonOptions {
+    useGR8AsSP?: boolean;
 }
