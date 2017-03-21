@@ -14,6 +14,12 @@ import { printDiagnostic } from "./ui/print";
 import { createVariable, boolToBin } from "./variables";
 import { RuntimeError } from "@maxfield/node-comet2-core";
 
+enum DebugAction {
+    Continue,
+    StepIn,
+    StepOut,
+    Next
+}
 
 export default class Comet2DebugSession extends DebugSession {
     // マルチスレッドに対応しないので，決め打ちでデフォルトスレッドのIDを決めている
@@ -44,6 +50,9 @@ export default class Comet2DebugSession extends DebugSession {
     private _debugger: Comet2Debugger;
 
     private _exceptionOccured: boolean;
+
+    private _waitingInputState: boolean;
+    private _pendingDebugAction: DebugAction;
 
     public constructor() {
         super();
@@ -103,6 +112,7 @@ export default class Comet2DebugSession extends DebugSession {
         // ファイルの内容を読み込む
         this._sourceLines = readFileSync(this._sourceFile).toString().split("");
         this._exceptionOccured = false;
+        this._waitingInputState = false;
 
         this._debugger = new Comet2Debugger(casl2Options, comet2Options);
 
@@ -260,6 +270,7 @@ export default class Comet2DebugSession extends DebugSession {
             this.forceTerminate(response);
             return;
         }
+        if (this._waitingInputState) return;
 
         let executeLine = this._currentLine;
 
@@ -270,6 +281,10 @@ export default class Comet2DebugSession extends DebugSession {
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
+                return;
+            }
+            if (stepResult.requestInput) {
+                this._pendingDebugAction = DebugAction.Continue;
                 return;
             }
 
@@ -287,6 +302,7 @@ export default class Comet2DebugSession extends DebugSession {
             this.forceTerminate(response);
             return;
         }
+        if (this._waitingInputState) return;
 
         const inst = this._debugger.getState().nextInstruction!.name;
         if (inst === "CALL") {
@@ -299,6 +315,10 @@ export default class Comet2DebugSession extends DebugSession {
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
+                return;
+            }
+            if (stepResult.requestInput) {
+                this._pendingDebugAction = DebugAction.Next;
                 return;
             }
 
@@ -319,6 +339,7 @@ export default class Comet2DebugSession extends DebugSession {
             this.forceTerminate(response);
             return;
         }
+        if (this._waitingInputState) return;
 
         // 一行実行して停止
         const executeLine = this._currentLine;
@@ -328,6 +349,10 @@ export default class Comet2DebugSession extends DebugSession {
         if (stepResult.programEnd) {
             this.sendResponse(response);
             this.sendEvent(new TerminatedEvent());
+            return;
+        }
+        if (stepResult.requestInput) {
+            this._pendingDebugAction = DebugAction.StepIn;
             return;
         }
 
@@ -344,6 +369,7 @@ export default class Comet2DebugSession extends DebugSession {
             this.forceTerminate(response);
             return;
         }
+        if (this._waitingInputState) return;
 
         const stackFrameDepth = this._debugger.stackFrameCount;
 
@@ -356,6 +382,10 @@ export default class Comet2DebugSession extends DebugSession {
             if (stepResult.programEnd) {
                 this.sendResponse(response);
                 this.sendEvent(new TerminatedEvent());
+                return;
+            }
+            if (stepResult.requestInput) {
+                this._pendingDebugAction = DebugAction.StepOut;
                 return;
             }
 
@@ -378,6 +408,34 @@ export default class Comet2DebugSession extends DebugSession {
 
     protected evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments): void {
         const { context, expression } = args;
+        if (this._waitingInputState && context === "repl") {
+            response.body = {
+                result: "入力を受け付けました。",
+                type: "string",
+                variablesReference: 0
+            };
+
+            this.sendResponse(response);
+
+            this._waitingInputState = false;
+            this._debugger.setInput(expression);
+            switch (this._pendingDebugAction) {
+                case DebugAction.Continue:
+                    this.continueRequest(response, { threadId: Comet2DebugSession.THREAD_ID });
+                    break;
+                case DebugAction.StepIn:
+                    this.stepInRequest(response, { threadId: Comet2DebugSession.THREAD_ID });
+                    break;
+                case DebugAction.StepOut:
+                    this.stepOutRequest(response, { threadId: Comet2DebugSession.THREAD_ID });
+                    break;
+                case DebugAction.Next:
+                    this.nextRequest(response, { threadId: Comet2DebugSession.THREAD_ID });
+                    break;
+            }
+
+            return;
+        }
 
         const variables = this.createVariables();
         const variable = variables.find(x => x.name === expression);
@@ -436,6 +494,13 @@ export default class Comet2DebugSession extends DebugSession {
     private step(executeLine: number, response: DebugProtocol.Response): StepInfo | undefined {
         try {
             const stepResult = this._debugger.stepInto(executeLine);
+            if (stepResult.requestInput) {
+                // 入力受付状態に移行する
+                this._waitingInputState = true;
+                this._currentLine = executeLine;
+                this.sendEvent(new OutputEvent("入力を受け付けています..."));
+                this.sendResponse(response);
+            }
             return stepResult;
         } catch (error) {
             this._currentLine = executeLine;

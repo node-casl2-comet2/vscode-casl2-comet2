@@ -10,7 +10,7 @@ export class Comet2Debugger {
     private _sourcePath: string;
     private _compileResult: CompileResult;
     private _stdout: Output;
-    private _stdin: Input;
+    private _stdin: Input | undefined;
     private _subroutineLines: Array<number>;
     private _stackFrames: Array<SubroutineCallInfo>;
 
@@ -18,8 +18,8 @@ export class Comet2Debugger {
         this._stdout = stdout;
     }
 
-    set onstdin(stdin: Input) {
-        this._stdin = stdin;
+    setInput(s: string) {
+        this._stdin = () => s;
     }
 
     get stackFrameCount() {
@@ -34,7 +34,7 @@ export class Comet2Debugger {
         this._casl2 = new Casl2(casl2Options);
 
         const stdout: Output = (s: string) => this._stdout(s);
-        const stdin: Input = () => this._stdin();
+        const stdin: Input = () => this._stdin!();
         this._comet2 = new Comet2(comet2Options, stdin, stdout);
     }
 
@@ -67,8 +67,20 @@ export class Comet2Debugger {
         }
 
         const inst = this.getState().nextInstruction!.name;
+        const isIn = inst === "IN";
+        if (isIn && this._stdin === undefined) {
+            // 入力を受け付ける
+            return {
+                programEnd: false,
+                requestInput: true,
+                nextLine: executeLine
+            };
+        }
 
         const end = this._comet2.stepInto();
+        if (isIn) {
+            this._stdin = undefined;
+        }
 
         const pr = this._comet2.PR;
         const isCall = inst === "CALL";
@@ -111,6 +123,7 @@ export class Comet2Debugger {
 
 export interface StepInfo {
     programEnd: boolean;
+    requestInput?: boolean;
     nextLine: number;
 }
 
