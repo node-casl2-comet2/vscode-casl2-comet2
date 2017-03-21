@@ -60,15 +60,9 @@ export default class Comet2DebugSession extends DebugSession {
         // フロントエンドに完了を通知する
         this.sendEvent(new InitializedEvent());
 
-        if (response.body !== undefined) {
-            response.body.supportsConfigurationDoneRequest = true;
-
-            // 変数などにホバーしたら式を評価して表示する
-            response.body.supportsEvaluateForHovers = true;
-
-            // TODO: サポートしている機能を明示する
-            // ステップバックボタンを表示させる
-            // response.body.supportsStepBack = true;
+        // Capabilities
+        response.body = {
+            supportsEvaluateForHovers: true,
         }
 
         this.sendResponse(response);
