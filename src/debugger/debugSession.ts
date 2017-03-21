@@ -130,6 +130,11 @@ export default class Comet2DebugSession extends DebugSession {
         }
     }
 
+    protected attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments) {
+        this.sendErrorResponse(response, 3001, "Attachには対応していません。");
+        this.shutdown();
+    }
+
     // 設定されたブレークポイント(複数)の情報を受け取る
     // デバッグモードに入る時とデバッグモード中に
     // ブレークポイントを追加または削除した時に呼び出される
