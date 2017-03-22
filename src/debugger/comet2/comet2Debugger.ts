@@ -49,7 +49,9 @@ export class Comet2Debugger {
         this._compileResult = compileResult;
         this._subroutineLines = Array.from(compileResult.debuggingInfo!.subroutineMap.values());
 
-        this._comet2.init(compileResult.hexes!);
+        if (compileResult.hexes !== undefined) {
+            this._comet2.init(compileResult.hexes);
+        }
 
         // 最初のSTART命令のラベルをスタックフレームに積んでおく
         const entryPoint = _.minBy(this.getDebugInfo().subroutinesInfo, x => x.startLine).subroutine;
