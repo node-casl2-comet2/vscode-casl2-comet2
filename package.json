@@ -2,7 +2,7 @@
   "name": "vscode-casl2-comet2",
   "displayName": "CASL2/COMET2",
   "description": "CASL2/COMET2 support for Visual Studio Code.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "MaxfieldWalker",
   "galleryBanner": {
     "color": "#000",
@@ -32,6 +32,26 @@
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "CASL2 Configuration",
+      "properties": {
+        "casl2.useGR8": {
+          "type": "boolean",
+          "default": false,
+          "description": "GR8を有効な汎用レジスタとして使用します。"
+        },
+        "casl2.enableLabelScope": {
+          "type": "boolean",
+          "default": false,
+          "description": "ラベルのスコープを有効にします。"
+        },
+        "casl2.allowNagativeValueForEffectiveAddress": {
+          "type": "boolean",
+          "default": false,
+          "description": "実効アドレスに負値をとることを許可します。"
+        }
+      }
+    },
     "breakpoints": [
       {
         "language": "casl2"
@@ -56,7 +76,7 @@
             "casl2Options": {
               "enableLabelScope": "${config.casl2.enableLabelScope}"
             },
-            "comet22Options": {
+            "comet2Options": {
               "allowSelfModifying": false
             }
           }
@@ -147,7 +167,7 @@
   },
   "dependencies": {
     "@maxfield/node-comet2-core": "0.1.0",
-    "@maxfield/node-casl2-language-server": "0.1.0",
+    "@maxfield/node-casl2-language-server": "0.1.4",
     "lodash": "^4.17.4",
     "vscode-debugadapter": "^1.18.0-pre.1",
     "vscode-debugprotocol": "^1.17.0",

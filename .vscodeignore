@@ -3,3 +3,8 @@ images/**
 samples/**
 .gitignore
 .gitattributes
+dist/test/**
+test/**
+src/**
+tsconfig.json
+tslint.json
