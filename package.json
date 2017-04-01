@@ -28,7 +28,8 @@
     "Linters"
   ],
   "activationEvents": [
-    "onLanguage:casl2"
+    "onLanguage:casl2",
+    "onCommand:casl2-lint.fixAllProblems"
   ],
   "main": "./dist/src/extension.js",
   "contributes": {
@@ -156,6 +157,13 @@
         "language": "casl2",
         "scopeName": "source.cas",
         "path": "./syntaxes/casl2.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "title": "Fix all problems",
+        "category": "casl2-lint",
+        "command": "casl2-lint.fixAllProblems"
       }
     ]
   },

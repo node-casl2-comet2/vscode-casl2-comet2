@@ -1,10 +1,14 @@
 "use strict";
 
 import * as vscode from "vscode";
+import { LanguageClient, TextDocumentIdentifier, RequestType } from "vscode-languageclient";
+import { FixAllProblemsRequestParams, FixAllProblemsRequestResponse } from "@maxfield/node-casl2-language-server";
 import { TextEdit, Range, Position } from "vscode-languageclient";
 import { Messages } from "./constants";
 
-export function applyTextEdit(uri: string, documentVersion: number, textEdits: TextEdit[]): void {
+export function applyTextEdits(uri: string, documentVersion: number, textEdits: TextEdit[]): void {
+    if (textEdits.length == 0) return;
+
     const activeTextEditor = vscode.window.activeTextEditor;
 
     // 開いているTextEditorのファイルのURIと一致するか
@@ -24,6 +28,23 @@ export function applyTextEdit(uri: string, documentVersion: number, textEdits: T
                 }
             });
         }
+    }
+}
+
+export function fixAllProblems(client: LanguageClient) {
+    return function (): void {
+        const activeTextEditor = vscode.window.activeTextEditor;
+        if (!activeTextEditor) return;
+
+        const uri = activeTextEditor.document.uri.toString();
+        const params: FixAllProblemsRequestParams = { textDocument: { uri } };
+        client.sendRequest(
+            new RequestType<FixAllProblemsRequestParams, FixAllProblemsRequestResponse, void, void>("textDocument/casl2-lint/fixAllProblems"), params)
+            .then((response) => {
+                applyTextEdits(uri, response.documentVersion, response.textEdits);
+            }, (err) => {
+                vscode.window.showErrorMessage(Messages.LanguageServerIPCError);
+            });
     }
 }
 

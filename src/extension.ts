@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { workspace, Disposable, ExtensionContext, languages, commands } from "vscode";
 import { LanguageClient, LanguageClientOptions, SettingMonitor, ServerOptions, TransportKind } from "vscode-languageclient";
-import { applyTextEdit } from "./textEdit";
+import { applyTextEdits, fixAllProblems } from "./textEdit";
 import { Commands } from "./constants";
 
 export function activate(context: ExtensionContext) {
@@ -40,8 +40,12 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(disposable);
 
     context.subscriptions.push(
-        commands.registerCommand(Commands.ApplySingleFix, applyTextEdit),
-        commands.registerCommand(Commands.ApplyAllSameRuleFixes, applyTextEdit),
-        commands.registerCommand(Commands.ApplyAllFixes, applyTextEdit)
+        // Internal Commands
+        commands.registerCommand(Commands.ApplySingleFix, applyTextEdits),
+        commands.registerCommand(Commands.ApplyAllSameRuleFixes, applyTextEdits),
+        commands.registerCommand(Commands.ApplyAllFixes, applyTextEdits),
+
+        // User Commands
+        commands.registerCommand(Commands.FixAllProblems, fixAllProblems(languageClient))
     );
 }
