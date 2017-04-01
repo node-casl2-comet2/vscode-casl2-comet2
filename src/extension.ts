@@ -40,6 +40,8 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(disposable);
 
     context.subscriptions.push(
-        commands.registerCommand(Commands.ApplySingleFix, applyTextEdit)
+        commands.registerCommand(Commands.ApplySingleFix, applyTextEdit),
+        commands.registerCommand(Commands.ApplyAllSameRuleFixes, applyTextEdit),
+        commands.registerCommand(Commands.ApplyAllFixes, applyTextEdit)
     );
 }

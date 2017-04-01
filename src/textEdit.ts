@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { TextEdit, Range, Position } from "vscode-languageclient";
 import { Messages } from "./constants";
 
-export function applyTextEdit(uri: string, documentVersion: number, textEdit: TextEdit): void {
+export function applyTextEdit(uri: string, documentVersion: number, textEdits: TextEdit[]): void {
     const activeTextEditor = vscode.window.activeTextEditor;
 
     // 開いているTextEditorのファイルのURIと一致するか
@@ -13,9 +13,11 @@ export function applyTextEdit(uri: string, documentVersion: number, textEdit: Te
             vscode.window.showInformationMessage(Messages.CannotApplyFixBecauseOfFileChange);
         } else {
             activeTextEditor.edit(editBuilder => {
-                editBuilder.replace(
-                    createVSCodeRange(textEdit.range), textEdit.newText
-                );
+                for (const textEdit of textEdits) {
+                    editBuilder.replace(
+                        createVSCodeRange(textEdit.range), textEdit.newText
+                    );
+                }
             }).then(success => {
                 if (!success) {
                     vscode.window.showErrorMessage(Messages.FailedToApplyFix);
