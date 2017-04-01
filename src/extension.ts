@@ -2,8 +2,10 @@
 
 import * as path from "path";
 
-import { workspace, Disposable, ExtensionContext, languages } from "vscode";
+import { workspace, Disposable, ExtensionContext, languages, commands } from "vscode";
 import { LanguageClient, LanguageClientOptions, SettingMonitor, ServerOptions, TransportKind } from "vscode-languageclient";
+import { applyTextEdit } from "./textEdit";
+import { Commands } from "./constants";
 
 export function activate(context: ExtensionContext) {
 
@@ -36,4 +38,8 @@ export function activate(context: ExtensionContext) {
     const disposable = languageClient.start();
 
     context.subscriptions.push(disposable);
+
+    context.subscriptions.push(
+        commands.registerCommand(Commands.ApplySingleFix, applyTextEdit)
+    );
 }
