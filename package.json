@@ -50,6 +50,11 @@
           "type": "boolean",
           "default": false,
           "description": "実効アドレスに負値をとることを許可します。"
+        },
+        "casl2.linter.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Lint機能を有効にします。"
         }
       }
     },
