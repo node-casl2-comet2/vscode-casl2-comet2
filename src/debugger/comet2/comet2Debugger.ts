@@ -114,7 +114,11 @@ export class Comet2Debugger {
             : this._compileResult.debuggingInfo!.addressLineMap;
 
         const nextLine = map.get(address);
-        if (nextLine === undefined) throw new Error();
+        if (nextLine === undefined) {
+            // 任意の命令行のアドレスに相当しないような
+            // アドレスにジャンプしようとした場合
+            return -1;
+        }
         return nextLine;
     }
 
