@@ -8,11 +8,12 @@ import {
 import { DebugProtocol } from "vscode-debugprotocol";
 import { readFileSync } from "fs";
 import * as path from "path";
-import { LaunchRequestArguments } from "./launchRequestArguments";
+import { LaunchRequestArguments, resolveFlag } from "./launchRequestArguments";
 import { Comet2Debugger, StepInfo } from "./comet2/comet2Debugger";
 import { printDiagnostic } from "./ui/print";
 import { createVariable, boolToBin } from "./variables";
 import { RuntimeError } from "@maxfield/node-comet2-core";
+import { Casl2CompileOption } from "@maxfield/node-casl2-core";
 
 enum DebugAction {
     Continue,
@@ -89,8 +90,17 @@ export default class Comet2DebugSession extends DebugSession {
             return;
         }
 
-        const useGR8AsSP = args.commonOptions ? args.commonOptions.useGR8AsSP : undefined;
-        let casl2Options = args.casl2Options;
+        // stringかbooleanで指定される可能性のあるものは
+        // resolveFlag関数でbooleanにまとめる
+        const useGR8AsSP = args.commonOptions ? resolveFlag(args.commonOptions.useGR8AsSP) : undefined;
+        let casl2Options: Casl2CompileOption | undefined = args.casl2Options ?
+            {
+                useGR8: resolveFlag(args.casl2Options.useGR8),
+                enableLabelScope: resolveFlag(args.casl2Options.enableLabelScope),
+                allowNagativeValueForEffectiveAddress: resolveFlag(args.casl2Options.allowNagativeValueForEffectiveAddress)
+            }
+            : undefined;
+
         let comet2Options = args.comet2Options;
 
         if (casl2Options === undefined) {

@@ -23,5 +23,13 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
 }
 
 export interface Casl2Comet2CommonOptions {
-    useGR8AsSP?: boolean;
+    useGR8AsSP?: boolean | string;
+}
+
+export function resolveFlag(flag: boolean | string | undefined): boolean | undefined {
+    if (flag === undefined) return undefined;
+
+    return typeof flag === "boolean"
+        ? flag
+        : flag === "true";
 }
