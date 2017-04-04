@@ -97,7 +97,7 @@ export default class Comet2DebugSession extends DebugSession {
             {
                 useGR8: resolveFlag(args.casl2Options.useGR8),
                 enableLabelScope: resolveFlag(args.casl2Options.enableLabelScope),
-                allowNagativeValueForEffectiveAddress: resolveFlag(args.casl2Options.allowNagativeValueForEffectiveAddress)
+                allowNegativeValueForEffectiveAddress: resolveFlag(args.casl2Options.allowNegativeValueForEffectiveAddress)
             }
             : undefined;
 
