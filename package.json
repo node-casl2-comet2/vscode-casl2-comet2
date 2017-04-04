@@ -1,7 +1,7 @@
 {
   "name": "vscode-casl2-comet2",
   "displayName": "CASL2/COMET2",
-  "description": "CASL2/COMET2 support for Visual Studio Code.",
+  "description": "CASL2/COMET2 support for Visual Studio Code",
   "version": "0.1.2",
   "publisher": "MaxfieldWalker",
   "galleryBanner": {
