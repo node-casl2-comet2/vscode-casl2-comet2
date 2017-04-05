@@ -11,8 +11,8 @@ export class Comet2Debugger {
     private _compileResult: CompileResult;
     private _stdout: Output;
     private _stdin: Input | undefined;
-    private _subroutineLines: Array<number>;
-    private _stackFrames: Array<SubroutineCallInfo>;
+    private _subroutineLines: number[];
+    private _stackFrames: SubroutineCallInfo[];
 
     set onstdout(stdout: Output) {
         this._stdout = stdout;
@@ -42,7 +42,7 @@ export class Comet2Debugger {
         return this._compileResult.debuggingInfo!;
     }
 
-    launch(sourcePath: string): Array<Diagnostic> {
+    launch(sourcePath: string): Diagnostic[] {
         this._sourcePath = sourcePath;
 
         const compileResult = this._casl2.compile(sourcePath, true);

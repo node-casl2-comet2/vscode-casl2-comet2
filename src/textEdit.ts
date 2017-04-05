@@ -45,7 +45,7 @@ export function fixAllProblems(client: LanguageClient) {
             }, (err) => {
                 vscode.window.showErrorMessage(Messages.LanguageServerIPCError);
             });
-    }
+    };
 }
 
 function createVSCodeRange(range: Range): vscode.Range {

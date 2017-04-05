@@ -73,7 +73,7 @@ export default class Comet2DebugSession extends DebugSession {
         // Capabilities
         response.body = {
             supportsEvaluateForHovers: true,
-        }
+        };
 
         this.sendResponse(response);
     }
@@ -256,7 +256,7 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     protected variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments): void {
-        const variables: Array<DebugProtocol.Variable> = [];
+        const variables: DebugProtocol.Variable[] = [];
         const state = this._debugger.getState();
 
         // GR8が有効だとしてもGR8はSPに一致するので必要ない
@@ -336,7 +336,7 @@ export default class Comet2DebugSession extends DebugSession {
                 return;
             }
 
-            this.stepOutRequest(<DebugProtocol.StepOutResponse>response, { threadId: Comet2DebugSession.THREAD_ID })
+            this.stepOutRequest(<DebugProtocol.StepOutResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
         } else {
             // CALL命令でない時はStep Intoと同じ
             this.stepInRequest(<DebugProtocol.StepInResponse>response, { threadId: Comet2DebugSession.THREAD_ID });
@@ -531,7 +531,7 @@ export default class Comet2DebugSession extends DebugSession {
     }
 
     private createVariables() {
-        const variables: Array<DebugProtocol.Variable> = [];
+        const variables: DebugProtocol.Variable[] = [];
         const state = this._debugger.getState();
 
         // GR8が有効だとしてもGR8はSPに一致するので必要ない

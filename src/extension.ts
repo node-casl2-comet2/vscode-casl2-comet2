@@ -20,7 +20,7 @@ export function activate(context: ExtensionContext) {
     const serverOptions: ServerOptions = {
         run: { module: serverModule, transport: TransportKind.ipc },
         debug: { module: serverModule, transport: TransportKind.ipc, options: debugOptions }
-    }
+    };
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ language: "casl2" }],
@@ -29,7 +29,7 @@ export function activate(context: ExtensionContext) {
             configurationSection: "casl2",
             fileEvents: workspace.createFileSystemWatcher("**/.clientrc")
         }
-    }
+    };
 
     // クライアントを作成して開始する
     const languageClient = new LanguageClient(
