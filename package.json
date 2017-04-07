@@ -46,7 +46,7 @@
           "default": false,
           "description": "ラベルのスコープを有効にします。"
         },
-        "casl2.allowNagativeValueForEffectiveAddress": {
+        "casl2.allowNegativeValueForEffectiveAddress": {
           "type": "boolean",
           "default": false,
           "description": "実効アドレスに負値をとることを許可します。"
@@ -138,9 +138,9 @@
                     "description": "ラベルのスコープを有効にします。",
                     "default": "${config.casl2.enableLabelScope}"
                   },
-                  "allowNagativeValueForEffectiveAddress": {
+                  "allowNegativeValueForEffectiveAddress": {
                     "description": "実効アドレスに負値をとることを許可します",
-                    "default": "${config.casl2.allowNagativeValueForEffectiveAddress}"
+                    "default": "${config.casl2.allowNegativeValueForEffectiveAddress}"
                   }
                 }
               },

@@ -58,7 +58,7 @@ Visual Studio CodeのQuick Openを開き(Ctrl+P)，
 |  ------ | ------ |
 |  `casl2.useGR8` | GR8を有効な汎用レジスタとして使用します。 |
 |  `casl2.enableLabelScope` | ラベルのスコープを有効にします。 |
-|  `casl2.allowNagativeValueForEffectiveAddress` | 実効アドレスに負値をとることを許可します。 |
+|  `casl2.allowNegativeValueForEffectiveAddress` | 実効アドレスに負値をとることを許可します。 |
 |  `casl2.linter.enabled` | Lint機能を有効にします。 |
 
 
